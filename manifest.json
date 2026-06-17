@@ -1,0 +1,37 @@
+{
+  "manifest_version": 2,
+  "name": "Rich Text Composer",
+  "version": "1.0.0",
+  "description": "Replace Thunderbird's built-in mail editor with a rich HTML editor. Supports format painter, tables, images and multilingual UI.",
+  "author": "Rich Text Composer Contributors",
+  "homepage_url": "https://github.com/your-account/rich-text-composer",
+  "applications": {
+    "gecko": {
+      "id": "rich-text-composer@thunderbird-addons.opensource",
+      "strict_min_version": "115.0"
+    }
+  },
+  "icons": {
+    "48": "icons/icon48.png",
+    "96": "icons/icon96.png"
+  },
+  "background": {
+    "scripts": ["background.js"]
+  },
+  "permissions": [
+    "compose",
+    "storage"
+  ],
+  "web_accessible_resources": [
+    "tinymce/*",
+    "tinymce/js/tinymce/*",
+    "tinymce/js/tinymce/plugins/*",
+    "tinymce/js/tinymce/themes/*",
+    "tinymce/js/tinymce/icons/*",
+    "tinymce/js/tinymce/models/*",
+    "tinymce/js/tinymce/langs/*",
+    "compose/*",
+    "compose/page-init.js",
+    "icons/*"
+  ]
+}

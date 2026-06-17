@@ -1,0 +1,119 @@
+/**
+ * background.js
+ * 管理 compose scripts 的注入、與各撰寫視窗的連線、以及儲存/送出前的內容同步。
+ */
+
+'use strict';
+
+// tabId -> Port 對應表
+const composePorts = new Map();
+// tabId -> 最新 HTML 內容（連續同步用）
+const latestContent = new Map();
+
+// ── 註冊 Compose Scripts ────────────────────────────────────────────────────
+
+console.log('[TinyMCE BG] background.js 已啟動，嘗試註冊 composeScripts...');
+
+let _composeRegistration = null;
+
+(async function () {
+  try {
+    // 先 unregister 舊的（防止重複註冊堆疊）
+    if (_composeRegistration && _composeRegistration.unregister) {
+      try { await _composeRegistration.unregister(); } catch (_) {}
+    }
+    _composeRegistration = await messenger.composeScripts.register({
+      js:  [{ file: 'compose/inject.js'  }],
+      css: [{ file: 'compose/inject.css' }]
+    });
+    console.log('[TinyMCE BG] composeScripts 註冊成功！');
+  } catch (e) {
+    console.error('[TinyMCE BG] composeScripts 註冊失敗:', e);
+  }
+})();
+
+// ── Port 連線管理 ────────────────────────────────────────────────────────────
+
+browser.runtime.onConnect.addListener((port) => {
+  if (port.name !== 'compose-editor') return;
+
+  const tab = port.sender?.tab;
+  if (!tab) return;
+
+  const tabId = tab.id;
+  composePorts.set(tabId, port);
+
+  port.onDisconnect.addListener(() => {
+    composePorts.delete(tabId);
+    latestContent.delete(tabId);
+  });
+
+  port.onMessage.addListener(async (msg) => {
+    switch (msg.action) {
+      // Compose script 要求取得初始內文
+      case 'getComposeDetails': {
+        try {
+          const details = await messenger.compose.getComposeDetails(tabId);
+          port.postMessage({ action: 'composeDetails', details });
+        } catch (e) {
+          console.error('[TinyMCE] getComposeDetails failed:', e);
+          port.postMessage({ action: 'composeDetails', details: { body: '', isPlainText: false } });
+        }
+        break;
+      }
+
+      // Compose script 定期推送最新 HTML — 只快取，不立刻 setComposeDetails
+      // （setComposeDetails 會觸發 Thunderbird 重繪 body，導致 TinyMCE DOM 被清掉）
+      case 'syncContent': {
+        latestContent.set(tabId, msg.html);
+        break;
+      }
+
+      // Compose script 回應 requestContent（送出前最後確認）
+      case 'content': {
+        const resolver = pendingResolvers.get(tabId);
+        if (resolver) {
+          pendingResolvers.delete(tabId);
+          resolver(msg.html);
+        }
+        break;
+      }
+    }
+  });
+});
+
+// ── 送出前同步 ───────────────────────────────────────────────────────────────
+
+/** tabId -> resolve function，用於等待 compose script 回傳內容 */
+const pendingResolvers = new Map();
+
+messenger.compose.onBeforeSend.addListener(async (tab) => {
+  const port = composePorts.get(tab.id);
+  if (!port) return {};
+
+  // 先用已快取的內容（99% 情況已是最新）
+  const cached = latestContent.get(tab.id);
+
+  // 再要求 compose script 回傳最新內容（確保最後編輯有被捕捉）
+  const html = await new Promise((resolve) => {
+    const timeout = setTimeout(() => {
+      pendingResolvers.delete(tab.id);
+      resolve(cached ?? '');
+    }, 3000);
+
+    pendingResolvers.set(tab.id, (content) => {
+      clearTimeout(timeout);
+      resolve(content);
+    });
+
+    try {
+      port.postMessage({ action: 'requestContent' });
+    } catch (_) {
+      clearTimeout(timeout);
+      pendingResolvers.delete(tab.id);
+      resolve(cached ?? '');
+    }
+  });
+
+  return { details: { body: html } };
+});
