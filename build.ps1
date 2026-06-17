@@ -1,13 +1,13 @@
-# build.ps1 — 將外掛打包為 tinymce-composer.xpi
+﻿# build.ps1 — 將外掛打包為 thunderpen.xpi
 # 執行：在 tb_editer\ 資料夾內執行  .\build.ps1
 
 $ErrorActionPreference = 'Stop'
-$outFile = Join-Path $PSScriptRoot 'tinymce-composer.xpi'
+$outFile = Join-Path $PSScriptRoot 'thunderpen.xpi'
 
 # 確認 TinyMCE 已放置
-$tinymceJs = Join-Path $PSScriptRoot 'tinymce\tinymce.min.js'
+$tinymceJs = Join-Path $PSScriptRoot 'tinymce\js\tinymce\tinymce.min.js'
 if (-not (Test-Path $tinymceJs)) {
-    Write-Error "找不到 tinymce\tinymce.min.js，請先依 README.md 說明放置 TinyMCE 檔案。"
+    Write-Error "找不到 tinymce\js\tinymce\tinymce.min.js，請先依 README.md 說明放置 TinyMCE 檔案。"
     exit 1
 }
 
@@ -43,5 +43,5 @@ foreach ($item in $include) {
 $zip.Dispose()
 
 $size = [math]::Round((Get-Item $outFile).Length / 1KB, 1)
-Write-Host "✅ 打包完成：tinymce-composer.xpi ($size KB)" -ForegroundColor Green
-Write-Host "   安裝方式：Thunderbird → 工具 → 外掛程式 → 從檔案安裝"
+Write-Host ("打包完成：thunderpen.xpi ({0} KB)" -f $size) -ForegroundColor Green
+Write-Host "   安裝方式：Thunderbird -> 工具 -> 外掛程式 -> 從檔案安裝"

@@ -1,6 +1,13 @@
-# TinyMCE Composer — Thunderbird 外掛
+# ⚡ 雷霆筆 Thunderpen
 
-以 TinyMCE 取代 Thunderbird 內建的郵件撰寫編輯器。
+> *讓你的 Thunderbird 也能像專業編輯器一樣，從容下筆。*
+
+雷霆筆（Thunderpen）是一款 Thunderbird 撰寫視窗外掛，以業界廣泛使用的
+**TinyMCE** 富文本編輯器取代 Thunderbird 預設的內文編輯區，
+帶來表格、圖片、格式複製、多國語系等現代化編輯體驗。
+
+無論你是寫客服回覆、商務報價、技術文件，還是日常的問候信，
+都能用熟悉的工具列、所見即所得地完成。
 
 ## 支援版本
 
@@ -46,7 +53,7 @@ Thunderbird 115（Supernova）以上，包含 140 ESR。
 1. 開啟 Thunderbird
 2. 選單 → **工具** → **外掛程式與佈景主題**
 3. 點選齒輪圖示 → **從檔案安裝外掛程式...**
-4. 選取 `tinymce-composer.xpi`（見下方打包說明）
+4. 選取 `thunderpen.xpi`（見下方打包說明）
 
 **或使用暫時安裝（不需打包）：**
 
@@ -63,7 +70,7 @@ Thunderbird 115（Supernova）以上，包含 140 ESR。
 .\build.ps1
 ```
 
-會產生 `tinymce-composer.xpi`，可分發安裝。
+會產生 `thunderpen.xpi`，可分發安裝。
 
 ## 功能說明
 
