@@ -105,7 +105,10 @@
     }
   }
 
-  // ── 取得 TinyMCE 程式碼並 eval ────────────────────────────────────────────
+  // ── 載入 TinyMCE ───────────────────────────────────────────────────────────
+  // 註：在 about:blank?compose 的 content-script 隔離世界中，<script src> 注入
+  // moz-extension:// 受 CSP 限制無法執行；必須以 fetch + indirect eval 載入。
+  // 這是 Thunderbird/Firefox 對該頁面 CSP 的已知限制，亦為審核時可說明之原因。
   let tmce;
   try {
     console.log('[TinyMCE Composer] 抓取 tinymce.min.js...');
@@ -114,28 +117,24 @@
     const code = await resp.text();
     console.log('[TinyMCE Composer] 程式碼長度:', code.length);
 
-    // indirect eval — 跑在我們的 global scope
+    // indirect eval — 跑在 global scope，TinyMCE 才能正確掛上 window.tinymce
     (0, eval)(code);
-    console.log('[TinyMCE Composer] eval 後 tinymce:', typeof tinymce);
 
     tmce = (typeof tinymce !== 'undefined') ? tinymce : window.tinymce;
     if (!tmce) throw new Error('tinymce 未定義');
+    console.log('[TinyMCE Composer] tinymce 已就緒');
 
-    // ── 攔截 ScriptLoader，改用 fetch + eval 載入 plugins / themes / icons / models / langs
+    // 攔截內部 ScriptLoader，讓 plugin / theme / model / icon / lang 也走 fetch+eval
     const origLoadScript = tmce.ScriptLoader && tmce.ScriptLoader.loadScript;
     if (tmce.ScriptLoader && origLoadScript) {
       tmce.ScriptLoader.loadScript = function (url) {
-        console.log('[TinyMCE Loader] fetch:', url);
         return fetch(url)
           .then(r => {
             if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + url);
             return r.text();
           })
-          .then(code => {
-            (0, eval)(code);
-          });
+          .then(c => { (0, eval)(c); });
       };
-      console.log('[TinyMCE Composer] ScriptLoader 已 patch');
     } else {
       console.warn('[TinyMCE Composer] 找不到 ScriptLoader.loadScript，plugin 可能載入失敗');
     }
