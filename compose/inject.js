@@ -236,9 +236,9 @@
     fixed_toolbar_container: '#kc-toolbar',
 
     plugins: [
-      'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
+      'advlist', 'autolink', 'lists', 'link', 'charmap',
       'anchor', 'searchreplace', 'visualblocks', 'code',
-      'insertdatetime', 'media', 'table', 'wordcount', 'kc_fp'
+      'insertdatetime', 'table', 'wordcount', 'kc_fp'
     ],
     toolbar:
       'undo redo | kc_fp | ' +
@@ -246,7 +246,7 @@
       'forecolor backcolor | ' +
       'alignleft aligncenter alignright | ' +
       'bullist numlist outdent indent | ' +
-      'table | image link | removeformat | code',
+      'table | link | removeformat | code',
     menubar: 'edit view insert format tools table',
     toolbar_mode: 'wrap',
 
@@ -259,15 +259,7 @@
     language_url: currentLang === 'en' ? undefined :
                   TINYMCE_BASE + '/langs/' + currentLang + '.js',
 
-    images_upload_handler: (blobInfo) => new Promise((res) => {
-      const r = new FileReader();
-      r.onload = ev => res(ev.target.result);
-      r.readAsDataURL(blobInfo.blob());
-    }),
-    image_advtab: true,
-    image_dimensions: true,
-    object_resizing: true,
-    resize_img_proportional: true,
+    object_resizing: 'table',
 
     content_style:
       '#kc-content { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",' +
