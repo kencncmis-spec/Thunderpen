@@ -251,8 +251,8 @@ await new Promise(r => setTimeout(r, 100));
 
     object_resizing: 'table',
 
-    // 表格右鍵選單：移除「表格屬性」與「儲存格屬性」，保留合併/分割、列/欄、刪除
-    table_context_menu: 'mergecells splitcell | row column | deletetable',
+    // 右鍵選單：覆寫預設值，移除 tableprops（表格屬性）與 cellprops（儲存格屬性）
+    contextmenu: 'link mergecells splitcell | row column | deletetable',
 
     content_style:
       '#kc-content { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",' +
