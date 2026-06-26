@@ -12,8 +12,6 @@ const latestContent = new Map();
 
 // ── 註冊 Compose Scripts ────────────────────────────────────────────────────
 
-console.log('[TinyMCE BG] background.js 已啟動，嘗試註冊 composeScripts...');
-
 let _composeRegistration = null;
 
 (async function () {
@@ -26,7 +24,6 @@ let _composeRegistration = null;
       js:  [{ file: 'compose/inject.js'  }],
       css: [{ file: 'compose/inject.css' }]
     });
-    console.log('[TinyMCE BG] composeScripts 註冊成功！');
   } catch (e) {
     console.error('[TinyMCE BG] composeScripts 註冊失敗:', e);
   }

@@ -14,7 +14,6 @@
 
   // 防重入：只用 window flag，不用 DOM 檢查（DOM 可能有舊草稿殘留的 #kc-toolbar）
   if (window.__kcInjectStarted) {
-    console.log('[TinyMCE Composer] 重複，略過');
     return;
   }
   window.__kcInjectStarted = true;
@@ -47,9 +46,7 @@
   loading.textContent = '[TinyMCE] 載入中...';
   (document.body || document.documentElement).appendChild(loading);
 
-  console.log('[TinyMCE Composer] inject.js 開始, href=', location.href);
-
-  await new Promise(r => setTimeout(r, 100));
+await new Promise(r => setTimeout(r, 100));
 
   // ── 建立 DOM 骨架 ─────────────────────────────────────────────────────────
   // toolbar 直接放在 body 內，並標上 data-kc-ui 標記，
@@ -99,10 +96,7 @@
         configurable: true,
         get: () => 'CSS1Compat'
       });
-      console.log('[TinyMCE Composer] 已覆寫 compatMode');
-    } catch (e) {
-      console.warn('[TinyMCE Composer] 覆寫 compatMode 失敗:', e.message);
-    }
+    } catch (_) {}
   }
 
   // ── 載入 TinyMCE ───────────────────────────────────────────────────────────
@@ -111,18 +105,15 @@
   // 這是 Thunderbird/Firefox 對該頁面 CSP 的已知限制，亦為審核時可說明之原因。
   let tmce;
   try {
-    console.log('[TinyMCE Composer] 抓取 tinymce.min.js...');
     const resp = await fetch(TINYMCE_BASE + '/tinymce.min.js');
     if (!resp.ok) throw new Error('HTTP ' + resp.status);
     const code = await resp.text();
-    console.log('[TinyMCE Composer] 程式碼長度:', code.length);
 
     // indirect eval — 跑在 global scope，TinyMCE 才能正確掛上 window.tinymce
     (0, eval)(code);
 
     tmce = (typeof tinymce !== 'undefined') ? tinymce : window.tinymce;
     if (!tmce) throw new Error('tinymce 未定義');
-    console.log('[TinyMCE Composer] tinymce 已就緒');
 
     // 攔截內部 ScriptLoader，讓 plugin / theme / model / icon / lang 也走 fetch+eval
     const origLoadScript = tmce.ScriptLoader && tmce.ScriptLoader.loadScript;
@@ -228,7 +219,6 @@
   }
 
   // ── 初始化 TinyMCE ────────────────────────────────────────────────────────
-  console.log('[TinyMCE Composer] 啟動 tinymce.init, 語系=', currentLang);
   tmce.init({
     selector: '#kc-content',
     inline: true,
@@ -270,7 +260,6 @@
 
     setup(ed) {
       ed.on('init', () => {
-        console.log('[TinyMCE Composer] tinymce init 完成！');
         const b = document.getElementById('_kc_loading');
         if (b) b.remove();
 
@@ -290,72 +279,35 @@
         }).observe(document.body, { childList: true });
 
         // ─── 修正：表格 picker 視覺同步 ─────────────────────────────────────
+        // TinyMCE 7 picker 的內部狀態能更新，但 Alloy 視覺綁定在 Thunderbird
+        // 撰寫視窗環境下不會同步到 DOM。這裡接管視覺更新。
         const COLS = 10;
-        let _kc_picker_logged = false;
-
         function updatePickerVisual(cell) {
           const parent = cell.parentElement;
           if (!parent || !parent.classList.contains('tox-insert-table-picker')) return;
-
           const cells = Array.from(parent.children);
           const idx = cells.indexOf(cell);
           if (idx < 0) return;
           const row = Math.floor(idx / COLS);
           const col = idx % COLS;
-
           cells.forEach((c, i) => {
             const r = Math.floor(i / COLS), x = i % COLS;
-            const on = r <= row && x <= col;
-            c.classList.toggle('tox-insert-table-picker__selected', on);
+            c.classList.toggle('tox-insert-table-picker__selected', r <= row && x <= col);
           });
-
-          // label 可能在 picker 的 sibling 或 picker 父層的後段
-          let label = parent.parentElement?.querySelector?.(
-            '.tox-insert-table-picker__label'
-          );
-          if (!label) label = document.querySelector('.tox-insert-table-picker__label');
+          let label = parent.parentElement?.querySelector?.('.tox-insert-table-picker__label')
+                   || document.querySelector('.tox-insert-table-picker__label');
           if (label) label.textContent = (col + 1) + 'x' + (row + 1);
-
-          if (!_kc_picker_logged) {
-            console.log('[KC Picker] 事件已成功觸發，row=', row, 'col=', col,
-                        'cells=', cells.length, 'label=', label);
-            _kc_picker_logged = true;
-          }
         }
-
-        // 用 mousemove + capture 確保不漏；同時用 element 直接判斷父層
         document.addEventListener('mousemove', (e) => {
           const t = e.target;
           if (!t || t.nodeType !== 1) return;
-          // 直接命中 cell
           if (t.parentElement?.classList?.contains('tox-insert-table-picker')) {
             updatePickerVisual(t);
             return;
           }
-          // 命中 cell 的子節點（萬一有 inner wrapper）
           const cell = t.closest?.('.tox-insert-table-picker > *');
           if (cell) updatePickerVisual(cell);
         }, true);
-
-        // 開啟 picker 時印一次 DOM 結構，方便除錯
-        new MutationObserver((muts) => {
-          for (const m of muts) {
-            for (const n of m.addedNodes) {
-              if (n.nodeType === 1) {
-                const picker = n.querySelector?.('.tox-insert-table-picker') ||
-                              (n.classList?.contains('tox-insert-table-picker') ? n : null);
-                if (picker) {
-                  console.log('[KC Picker] picker 已渲染:', {
-                    cells: picker.children.length,
-                    firstCellTag: picker.children[0]?.tagName,
-                    firstCellClass: picker.children[0]?.className,
-                    parentHTML: picker.parentElement?.outerHTML?.slice(0, 300)
-                  });
-                }
-              }
-            }
-          }
-        }).observe(document.body, { childList: true, subtree: true });
 
         const sync = debounce(() => {
           port.postMessage({ action: 'syncContent', html: ed.getContent() });
