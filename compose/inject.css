@@ -45,9 +45,9 @@ html, body {
   -moz-user-select: none !important;
 }
 
-/* ─── 修正：表格 picker 選格藍色高亮 ───
-   TinyMCE 預設用 .tox-insert-table-picker__selected 上色，但在某些情況下
-   inheritance 會被打斷。直接覆寫確保樣式生效。 */
+/* ─── 修正：表格 picker 滑鼠經過時的藍色高亮 ───
+   TinyMCE 7 oxide skin 同時對 __selected 套用了 filter: contrast(50%)，
+   會把藍色變成灰暗看不出來。必須一併移除 filter。 */
 .tox .tox-insert-table-picker > div {
   border-color: #cccccc;
   background-color: transparent;
@@ -55,6 +55,7 @@ html, body {
 .tox .tox-insert-table-picker .tox-insert-table-picker__selected {
   background-color: #2276d2 !important;
   border-color: #2276d2 !important;
+  filter: none !important;
 }
 
 /* 貼上的圖片不超出編輯區寬度 */
