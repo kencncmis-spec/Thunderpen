@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8">
+  <title>雷霆筆 Thunderpen - 設定</title>
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+  <main class="container">
+    <header>
+      <h1>⚡ 雷霆筆 Thunderpen</h1>
+      <p class="subtitle">編輯器設定</p>
+    </header>
+
+    <section class="card">
+      <label for="lang-select">
+        <span class="label-title">編輯器介面語系</span>
+        <span class="label-hint">變更後請關閉並重新開啟撰寫視窗即可生效。</span>
+      </label>
+      <select id="lang-select"></select>
+      <div id="lang-status" class="status"></div>
+    </section>
+
+    <footer>
+      <small>Thunderpen v<span id="version"></span> · 大前科技</small>
+    </footer>
+  </main>
+  <script src="options.js"></script>
+</body>
+</html>

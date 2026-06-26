@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "雷霆筆 Thunderpen",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "為 Thunderbird 換上 TinyMCE 富文本編輯器 — 表格、圖片、格式複製、多國語系一筆到位。Bring a TinyMCE-powered rich editor to Thunderbird: tables, images, format painter, and multilingual UI.",
   "author": "Thunderpen Contributors",
   "homepage_url": "https://github.com/kencncmis-spec/Thunderpen",
@@ -18,6 +18,10 @@
   "background": {
     "scripts": ["background.js"]
   },
+  "options_ui": {
+    "page": "options/options.html",
+    "open_in_tab": false
+  },
   "permissions": [
     "compose",
     "storage"
@@ -32,6 +36,7 @@
     "tinymce/js/tinymce/langs/*",
     "compose/*",
     "compose/page-init.js",
+    "options/*",
     "icons/*"
   ]
 }

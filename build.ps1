@@ -19,6 +19,7 @@ $include = @(
     'manifest.json',
     'background.js',
     'compose',
+    'options',
     'tinymce',
     'icons'
 )

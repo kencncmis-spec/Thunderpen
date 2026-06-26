@@ -205,51 +205,13 @@
     let t; return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), ms); };
   }
 
-  // ── 語系設定 ──────────────────────────────────────────────────────────────
-  // 支援的語系（label, code, langFile）。code 是 TinyMCE 認得的代號。
-  const LANGUAGES = [
-    { code: 'zh_TW', label: '繁體中文' },
-    { code: 'zh_CN', label: '簡體中文' },
-    { code: 'en',    label: 'English' },
-    { code: 'ja',    label: '日本語' },
-    { code: 'ko_KR', label: '한국어' },
-    { code: 'de',    label: 'Deutsch' },
-    { code: 'fr_FR', label: 'Français' },
-    { code: 'es',    label: 'Español' },
-  ];
-
+  // ── 從附加元件設定頁讀取語系設定 ──────────────────────────────────────────
+  // 設定 UI 位於 options/options.html，由附加元件管理員開啟。
   let currentLang = 'zh_TW';
   try {
     const stored = await browser.storage.local.get('tinymce_lang');
     if (stored.tinymce_lang) currentLang = stored.tinymce_lang;
   } catch (_) {}
-
-  // 自訂語系切換外掛
-  tmce.PluginManager.add('kc_lang', (ed) => {
-    ed.ui.registry.addMenuButton('kc_lang', {
-      text: '語系',
-      tooltip: '切換編輯器介面語言',
-      fetch: (cb) => {
-        const items = LANGUAGES.map((l) => ({
-          type: 'menuitem',
-          text: l.label + (l.code === currentLang ? ' ✓' : ''),
-          onAction: async () => {
-            try {
-              await browser.storage.local.set({ tinymce_lang: l.code });
-              ed.notificationManager.open({
-                text: '已切換到「' + l.label + '」，下次開啟撰寫視窗生效。',
-                type: 'success',
-                timeout: 3000
-              });
-            } catch (e) {
-              console.error('[TinyMCE Composer] 儲存語系設定失敗:', e);
-            }
-          }
-        }));
-        cb(items);
-      }
-    });
-  });
 
   // 確認語系檔存在；不存在則退回英文
   const langFileUrl = TINYMCE_BASE + '/langs/' + currentLang + '.js';
@@ -274,7 +236,7 @@
     plugins: [
       'advlist', 'autolink', 'lists', 'link', 'image', 'charmap',
       'anchor', 'searchreplace', 'visualblocks', 'code',
-      'insertdatetime', 'media', 'table', 'wordcount', 'kc_fp', 'kc_lang'
+      'insertdatetime', 'media', 'table', 'wordcount', 'kc_fp'
     ],
     toolbar:
       'undo redo | kc_fp | ' +
@@ -282,7 +244,7 @@
       'forecolor backcolor | ' +
       'alignleft aligncenter alignright | ' +
       'bullist numlist outdent indent | ' +
-      'table | image link | removeformat | code | kc_lang',
+      'table | image link | removeformat | code',
     menubar: 'edit view insert format tools table',
     toolbar_mode: 'wrap',
 
