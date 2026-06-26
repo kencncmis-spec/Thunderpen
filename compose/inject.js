@@ -207,10 +207,12 @@
 
   // ── 從附加元件設定頁讀取語系設定 ──────────────────────────────────────────
   // 設定 UI 位於 options/options.html，由附加元件管理員開啟。
-  let currentLang = 'zh_TW';
+  let currentLang = 'zh-TW';
   try {
     const stored = await browser.storage.local.get('tinymce_lang');
     if (stored.tinymce_lang) currentLang = stored.tinymce_lang;
+    // 相容舊版底線格式 zh_TW → zh-TW
+    currentLang = currentLang.replace(/_/g, '-');
   } catch (_) {}
 
   // 確認語系檔存在；不存在則退回英文

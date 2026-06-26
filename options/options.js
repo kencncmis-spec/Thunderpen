@@ -1,14 +1,20 @@
 'use strict';
 
 const LANGUAGES = [
-  { code: 'zh_TW', label: '繁體中文 (Traditional Chinese)' },
-  { code: 'zh_CN', label: '简体中文 (Simplified Chinese)' },
+  { code: 'zh-TW', label: '繁體中文 (Traditional Chinese)' },
+  { code: 'zh-CN', label: '简体中文 (Simplified Chinese)' },
+  { code: 'zh-HK', label: '繁體中文 - 香港' },
   { code: 'en',    label: 'English' },
   { code: 'ja',    label: '日本語 (Japanese)' },
-  { code: 'ko_KR', label: '한국어 (Korean)' },
+  { code: 'ko-KR', label: '한국어 (Korean)' },
   { code: 'de',    label: 'Deutsch (German)' },
-  { code: 'fr_FR', label: 'Français (French)' },
+  { code: 'fr-FR', label: 'Français (French)' },
   { code: 'es',    label: 'Español (Spanish)' },
+  { code: 'it',    label: 'Italiano (Italian)' },
+  { code: 'ru',    label: 'Русский (Russian)' },
+  { code: 'pt-BR', label: 'Português - Brasil' },
+  { code: 'vi',    label: 'Tiếng Việt (Vietnamese)' },
+  { code: 'th-TH', label: 'ไทย (Thai)' },
 ];
 
 const TINYMCE_LANGS = browser.runtime.getURL('tinymce/js/tinymce/langs');
@@ -50,9 +56,15 @@ async function buildOptions() {
 async function loadCurrent() {
   try {
     const { tinymce_lang } = await browser.storage.local.get('tinymce_lang');
-    select.value = tinymce_lang || 'zh_TW';
+    // 相容舊版底線格式 zh_TW → zh-TW
+    const code = (tinymce_lang || 'zh-TW').replace(/_/g, '-');
+    select.value = code;
+    // 若舊值已換新，立即寫回
+    if (tinymce_lang && tinymce_lang !== code) {
+      await browser.storage.local.set({ tinymce_lang: code });
+    }
   } catch (_) {
-    select.value = 'zh_TW';
+    select.value = 'zh-TW';
   }
 }
 
