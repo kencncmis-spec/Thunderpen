@@ -265,6 +265,9 @@
       r.readAsDataURL(blobInfo.blob());
     }),
     image_advtab: true,
+    image_dimensions: true,
+    object_resizing: true,
+    resize_img_proportional: true,
 
     content_style:
       '#kc-content { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",' +

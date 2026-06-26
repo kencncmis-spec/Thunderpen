@@ -44,3 +44,36 @@ html, body {
   user-select: none !important;
   -moz-user-select: none !important;
 }
+
+/* ─── 修正：表格 picker 選格藍色高亮 ───
+   TinyMCE 預設用 .tox-insert-table-picker__selected 上色，但在某些情況下
+   inheritance 會被打斷。直接覆寫確保樣式生效。 */
+.tox .tox-insert-table-picker > div {
+  border-color: #cccccc;
+  background-color: transparent;
+}
+.tox .tox-insert-table-picker .tox-insert-table-picker__selected {
+  background-color: #2276d2 !important;
+  border-color: #2276d2 !important;
+}
+
+/* ─── 修正：圖片縮放 handle 可見性 ───
+   TinyMCE 的 8 個縮放控制點是 .mce-resizehandle，預設藍色小方塊，
+   在 inline 模式下有時被父層 overflow 切掉，這裡確保它能顯示。 */
+.mce-content-body img,
+#kc-content img {
+  max-width: 100%;
+  height: auto;
+}
+.mce-content-body .mce-resizehandle,
+#kc-content .mce-resizehandle {
+  background-color: #2276d2 !important;
+  border: 1px solid #ffffff !important;
+  width: 10px !important;
+  height: 10px !important;
+  z-index: 10000 !important;
+}
+.mce-content-body img[data-mce-selected],
+#kc-content img[data-mce-selected] {
+  outline: 2px solid #2276d2 !important;
+}
