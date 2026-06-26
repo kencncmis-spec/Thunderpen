@@ -46,16 +46,24 @@ html, body {
 }
 
 /* ─── 修正：表格 picker 滑鼠經過時的藍色高亮 ───
-   TinyMCE 7 oxide skin 同時對 __selected 套用了 filter: contrast(50%)，
-   會把藍色變成灰暗看不出來。必須一併移除 filter。 */
-.tox .tox-insert-table-picker > div {
+   TinyMCE 7 oxide skin 對 __selected 套用了
+     border-color: Highlight; filter: contrast(50%);
+   filter: contrast(50%) 會把藍色變成灰暗，所以看起來像沒高亮。
+   使用 [class~=...] 屬性選擇器拉高特異性，並強制 filter:none。 */
+.tox-insert-table-picker > div {
   border-color: #cccccc;
   background-color: transparent;
 }
+
+div.tox-insert-table-picker__selected,
+[class~="tox-insert-table-picker__selected"],
+.tox-insert-table-picker .tox-insert-table-picker__selected,
 .tox .tox-insert-table-picker .tox-insert-table-picker__selected {
   background-color: #2276d2 !important;
-  border-color: #2276d2 !important;
+  background:        #2276d2 !important;
+  border-color:      #2276d2 !important;
   filter: none !important;
+  -webkit-filter: none !important;
 }
 
 /* 貼上的圖片不超出編輯區寬度 */

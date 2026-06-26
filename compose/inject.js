@@ -289,6 +289,20 @@
           for (const m of muts) m.addedNodes.forEach((n) => markUI(n));
         }).observe(document.body, { childList: true });
 
+        // ─── 修正：表格 picker 滑鼠移動時手動 focus 格子 ───────────────────────
+        // TinyMCE 7 inline 模式下，picker 格子的 mousemove→focus 鏈在某些
+        // contentEditable 環境下會失效，導致 label 永遠卡在 1x1。
+        // 這裡用全域事件委派強制套用 focus，讓 cell 的 onFocus handler 觸發
+        // 內部 row/col 更新（同時也會自動套上 __selected class）。
+        document.addEventListener('mouseover', (e) => {
+          const cell = e.target.closest?.(
+            '.tox-insert-table-picker > div'
+          );
+          if (cell && document.activeElement !== cell) {
+            try { cell.focus({ preventScroll: true }); } catch (_) {}
+          }
+        }, true);
+
         const sync = debounce(() => {
           port.postMessage({ action: 'syncContent', html: ed.getContent() });
         }, SYNC_DEBOUNCE_MS);
