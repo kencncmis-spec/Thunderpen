@@ -290,40 +290,72 @@
         }).observe(document.body, { childList: true });
 
         // ─── 修正：表格 picker 視覺同步 ─────────────────────────────────────
-        // TinyMCE 7 inline 模式下，picker 的內部 state（點擊插入格數）能更新，
-        // 但 Alloy 視覺綁定（label 與 __selected class）在 Thunderbird 撰寫
-        // 視窗環境下不會同步。這裡接管視覺：直接根據滑鼠位置算出 row/col，
-        // 同步更新 label 文字與格子高亮。
-        document.addEventListener('mouseover', (e) => {
-          const picker = e.target.closest?.('.tox-insert-table-picker');
-          if (!picker) return;
-          const cell = e.target.closest('.tox-insert-table-picker > div');
-          if (!cell) return;
+        const COLS = 10;
+        let _kc_picker_logged = false;
 
-          const cells = Array.from(picker.querySelectorAll(':scope > div'));
+        function updatePickerVisual(cell) {
+          const parent = cell.parentElement;
+          if (!parent || !parent.classList.contains('tox-insert-table-picker')) return;
+
+          const cells = Array.from(parent.children);
           const idx = cells.indexOf(cell);
           if (idx < 0) return;
-
-          // 10 欄 × 10 列
-          const COLS = 10;
           const row = Math.floor(idx / COLS);
           const col = idx % COLS;
 
-          // 套用 / 移除 __selected
           cells.forEach((c, i) => {
             const r = Math.floor(i / COLS), x = i % COLS;
-            const selected = r <= row && x <= col;
-            c.classList.toggle('tox-insert-table-picker__selected', selected);
+            const on = r <= row && x <= col;
+            c.classList.toggle('tox-insert-table-picker__selected', on);
           });
 
-          // 更新 label「N x M」
-          const label = picker.parentElement?.querySelector?.(
+          // label 可能在 picker 的 sibling 或 picker 父層的後段
+          let label = parent.parentElement?.querySelector?.(
             '.tox-insert-table-picker__label'
-          ) || picker.nextElementSibling;
-          if (label && label.classList?.contains('tox-insert-table-picker__label')) {
-            label.textContent = (col + 1) + 'x' + (row + 1);
+          );
+          if (!label) label = document.querySelector('.tox-insert-table-picker__label');
+          if (label) label.textContent = (col + 1) + 'x' + (row + 1);
+
+          if (!_kc_picker_logged) {
+            console.log('[KC Picker] 事件已成功觸發，row=', row, 'col=', col,
+                        'cells=', cells.length, 'label=', label);
+            _kc_picker_logged = true;
           }
+        }
+
+        // 用 mousemove + capture 確保不漏；同時用 element 直接判斷父層
+        document.addEventListener('mousemove', (e) => {
+          const t = e.target;
+          if (!t || t.nodeType !== 1) return;
+          // 直接命中 cell
+          if (t.parentElement?.classList?.contains('tox-insert-table-picker')) {
+            updatePickerVisual(t);
+            return;
+          }
+          // 命中 cell 的子節點（萬一有 inner wrapper）
+          const cell = t.closest?.('.tox-insert-table-picker > *');
+          if (cell) updatePickerVisual(cell);
         }, true);
+
+        // 開啟 picker 時印一次 DOM 結構，方便除錯
+        new MutationObserver((muts) => {
+          for (const m of muts) {
+            for (const n of m.addedNodes) {
+              if (n.nodeType === 1) {
+                const picker = n.querySelector?.('.tox-insert-table-picker') ||
+                              (n.classList?.contains('tox-insert-table-picker') ? n : null);
+                if (picker) {
+                  console.log('[KC Picker] picker 已渲染:', {
+                    cells: picker.children.length,
+                    firstCellTag: picker.children[0]?.tagName,
+                    firstCellClass: picker.children[0]?.className,
+                    parentHTML: picker.parentElement?.outerHTML?.slice(0, 300)
+                  });
+                }
+              }
+            }
+          }
+        }).observe(document.body, { childList: true, subtree: true });
 
         const sync = debounce(() => {
           port.postMessage({ action: 'syncContent', html: ed.getContent() });
