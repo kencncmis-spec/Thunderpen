@@ -289,17 +289,39 @@
           for (const m of muts) m.addedNodes.forEach((n) => markUI(n));
         }).observe(document.body, { childList: true });
 
-        // ─── 修正：表格 picker 滑鼠移動時手動 focus 格子 ───────────────────────
-        // TinyMCE 7 inline 模式下，picker 格子的 mousemove→focus 鏈在某些
-        // contentEditable 環境下會失效，導致 label 永遠卡在 1x1。
-        // 這裡用全域事件委派強制套用 focus，讓 cell 的 onFocus handler 觸發
-        // 內部 row/col 更新（同時也會自動套上 __selected class）。
+        // ─── 修正：表格 picker 視覺同步 ─────────────────────────────────────
+        // TinyMCE 7 inline 模式下，picker 的內部 state（點擊插入格數）能更新，
+        // 但 Alloy 視覺綁定（label 與 __selected class）在 Thunderbird 撰寫
+        // 視窗環境下不會同步。這裡接管視覺：直接根據滑鼠位置算出 row/col，
+        // 同步更新 label 文字與格子高亮。
         document.addEventListener('mouseover', (e) => {
-          const cell = e.target.closest?.(
-            '.tox-insert-table-picker > div'
-          );
-          if (cell && document.activeElement !== cell) {
-            try { cell.focus({ preventScroll: true }); } catch (_) {}
+          const picker = e.target.closest?.('.tox-insert-table-picker');
+          if (!picker) return;
+          const cell = e.target.closest('.tox-insert-table-picker > div');
+          if (!cell) return;
+
+          const cells = Array.from(picker.querySelectorAll(':scope > div'));
+          const idx = cells.indexOf(cell);
+          if (idx < 0) return;
+
+          // 10 欄 × 10 列
+          const COLS = 10;
+          const row = Math.floor(idx / COLS);
+          const col = idx % COLS;
+
+          // 套用 / 移除 __selected
+          cells.forEach((c, i) => {
+            const r = Math.floor(i / COLS), x = i % COLS;
+            const selected = r <= row && x <= col;
+            c.classList.toggle('tox-insert-table-picker__selected', selected);
+          });
+
+          // 更新 label「N x M」
+          const label = picker.parentElement?.querySelector?.(
+            '.tox-insert-table-picker__label'
+          ) || picker.nextElementSibling;
+          if (label && label.classList?.contains('tox-insert-table-picker__label')) {
+            label.textContent = (col + 1) + 'x' + (row + 1);
           }
         }, true);
 
