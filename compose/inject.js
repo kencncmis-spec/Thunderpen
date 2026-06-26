@@ -251,8 +251,12 @@ await new Promise(r => setTimeout(r, 100));
 
     object_resizing: 'table',
 
-    // 右鍵選單：覆寫預設值，移除 tableprops（表格屬性）與 cellprops（儲存格屬性）
-    contextmenu: 'link mergecells splitcell | row column | deletetable',
+    // 右鍵選單：移除 tableprops（表格屬性）、cellprops（儲存格屬性）、
+    // tablerowprops（行屬性）。row 子選單預設含 tablerowprops，必須展開明列。
+    contextmenu:
+      'link mergecells splitcell | ' +
+      'tableinsertrowbefore tableinsertrowafter tabledeleterow | ' +
+      'column | deletetable',
 
     content_style:
       '#kc-content { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",' +
