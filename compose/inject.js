@@ -100,6 +100,16 @@ await new Promise(r => setTimeout(r, 100));
     overflow: 'auto', boxSizing: 'border-box'
   });
 
+  // 動態同步 body padding-top 與 toolbar 實際高度，避免 wrap 後內文被遮蔽
+  const syncToolbarHeight = () => {
+    const h = toolbarEl.getBoundingClientRect().height;
+    if (h > 0) document.body.style.paddingTop = h + 'px';
+  };
+  if (typeof ResizeObserver !== 'undefined') {
+    new ResizeObserver(syncToolbarHeight).observe(toolbarEl);
+  }
+  window.addEventListener('resize', syncToolbarHeight);
+
   // ── 強制 standards mode（about:blank 預設為 quirks）──────────────────────
   if (document.compatMode !== 'CSS1Compat') {
     try {
