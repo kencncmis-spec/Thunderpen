@@ -81,6 +81,17 @@ await new Promise(r => setTimeout(r, 100));
   Array.from(document.body.childNodes).filter(isUiNode).forEach(n => n.remove());
   kids.forEach(n => contentEl.appendChild(n));
 
+  // 若原始信件內容為空（或僅有空白），插入一個 <p><br></p> 作為起始段落，
+  // 否則 TinyMCE inline 在空 div 上無法定位游標，導致使用者無法輸入。
+  const hasMeaningfulContent = Array.from(contentEl.childNodes).some(n => {
+    if (n.nodeType === 1) return true;                       // 任何元素節點
+    if (n.nodeType === 3) return n.nodeValue.trim() !== '';  // 非空白文字
+    return false;
+  });
+  if (!hasMeaningfulContent) {
+    contentEl.innerHTML = '<p><br></p>';
+  }
+
   document.body.appendChild(toolbarEl);
   document.body.appendChild(contentEl);
 
