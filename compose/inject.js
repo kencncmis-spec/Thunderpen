@@ -56,8 +56,8 @@ await new Promise(r => setTimeout(r, 100));
   toolbarEl.setAttribute('data-kc-ui', '1');
   toolbarEl.contentEditable = 'false';
   toolbarEl.style.cssText =
-    'position:fixed;top:0;left:0;right:0;z-index:2147483646;' +
-    'min-height:44px;background:#f9f9f9;border-bottom:1px solid #e0e0e0;';
+    'flex:0 0 auto;min-height:44px;' +
+    'background:#f9f9f9;border-bottom:1px solid #e0e0e0;';
 
   const contentEl = document.createElement('div');
   contentEl.id = 'kc-content';
@@ -95,20 +95,38 @@ await new Promise(r => setTimeout(r, 100));
   document.body.appendChild(toolbarEl);
   document.body.appendChild(contentEl);
 
+  // body 用 flex 直欄佈局：toolbar 自然高度於上、contentEl 填滿剩餘空間並滾動
   Object.assign(document.body.style, {
-    margin: '0', padding: '44px 0 0 0', height: '100%',
-    overflow: 'auto', boxSizing: 'border-box'
+    margin: '0', padding: '0', height: '100%',
+    display: 'flex', flexDirection: 'column',
+    overflow: 'hidden', boxSizing: 'border-box'
+  });
+  Object.assign(contentEl.style, {
+    flex: '1 1 auto', minHeight: '0', overflowY: 'auto', padding: '8px 12px'
   });
 
-  // 動態同步 body padding-top 與 toolbar 實際高度，避免 wrap 後內文被遮蔽
-  const syncToolbarHeight = () => {
-    const h = toolbarEl.getBoundingClientRect().height;
-    if (h > 0) document.body.style.paddingTop = h + 'px';
-  };
-  if (typeof ResizeObserver !== 'undefined') {
-    new ResizeObserver(syncToolbarHeight).observe(toolbarEl);
-  }
-  window.addEventListener('resize', syncToolbarHeight);
+  // 防止 Thunderbird 把整個 body 設為可編輯時，backspace 連續刪除導致工具列被吃掉
+  document.body.contentEditable = 'false';
+
+  // 安全網：監視 toolbar 是否被刪除，被刪掉就還原（極端情況下 backspace 仍可能波及）
+  new MutationObserver(() => {
+    if (!document.body.contains(toolbarEl)) {
+      document.body.insertBefore(toolbarEl, document.body.firstChild);
+    }
+  }).observe(document.body, { childList: true });
+
+  // 攔截 Backspace/Delete：當選擇範圍在 contentEl 之外（或剛好在邊界）時阻擋
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Backspace' && e.key !== 'Delete') return;
+    const sel = document.getSelection();
+    if (!sel || sel.rangeCount === 0) return;
+    const range = sel.getRangeAt(0);
+    // 若選擇起點不在 contentEl 內部，禁止刪除
+    if (!contentEl.contains(range.startContainer)) {
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
 
   // ── 強制 standards mode（about:blank 預設為 quirks）──────────────────────
   if (document.compatMode !== 'CSS1Compat') {
