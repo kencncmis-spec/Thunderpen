@@ -381,6 +381,17 @@ await new Promise(r => setTimeout(r, 100));
         port.onMessage.addListener(msg => {
           if (msg.action === 'requestContent') {
             port.postMessage({ action: 'content', html: cleanContent() });
+          } else if (msg.action === 'prepareForSend') {
+            // 送出前把 toolbar 從 body 取出，避免被序列化
+            try {
+              if (toolbarEl.parentNode === document.body) {
+                document.documentElement.appendChild(toolbarEl);
+              }
+              // 另外把所有 tox-* 浮動元素也移除（pop-up、sink）
+              document.body.querySelectorAll(
+                '[data-kc-ui], .tox-tinymce-aux, .tox-silver-sink'
+              ).forEach(n => document.documentElement.appendChild(n));
+            } catch (_) {}
           }
         });
 

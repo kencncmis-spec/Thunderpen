@@ -98,10 +98,12 @@ messenger.compose.onBeforeSend.addListener(async (tab) => {
   const port = composePorts.get(tab.id);
   if (!port) return {};
 
-  // 先用已快取的內容（99% 情況已是最新）
   const cached = latestContent.get(tab.id);
 
-  // 再要求 compose script 回傳最新內容（確保最後編輯有被捕捉）
+  // 1. 通知 compose script 從 DOM 移除 toolbar（避免 Thunderbird 序列化時帶入）
+  try { port.postMessage({ action: 'prepareForSend' }); } catch (_) {}
+
+  // 2. 要求 compose script 回傳乾淨的最新內容
   const html = await new Promise((resolve) => {
     const timeout = setTimeout(() => {
       pendingResolvers.delete(tab.id);
@@ -122,5 +124,13 @@ messenger.compose.onBeforeSend.addListener(async (tab) => {
     }
   });
 
+  // 3. 明確呼叫 setComposeDetails 寫回（return details 不一定每個版本都吃）
+  try {
+    await messenger.compose.setComposeDetails(tab.id, { body: html });
+  } catch (e) {
+    console.error('[TinyMCE BG] setComposeDetails on send failed:', e);
+  }
+
+  // 4. 同時走 return details 路徑（雙保險）
   return { details: { body: html } };
 });
