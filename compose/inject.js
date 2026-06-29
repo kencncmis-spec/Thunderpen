@@ -388,16 +388,15 @@ await new Promise(r => setTimeout(r, 100));
           if (msg.action === 'requestContent') {
             port.postMessage({ action: 'content', html: cleanContent() });
           } else if (msg.action === 'prepareForSend') {
-            // 1. 通知 MutationObserver 不要還原 toolbar
+            // 1. 停掉 MutationObserver 還原邏輯
             window.__kc_setSending?.(true);
-            // 2. 把所有 UI 元素移出 body，搬到 documentElement
+            // 2. 從整個 document 徹底移除所有 UI 元素（不能只搬到 html，
+            //    因為 Thunderbird 序列化的是整份 HTML 不只 body）
             try {
-              const ui = [toolbarEl, ...document.body.querySelectorAll(
-                '[data-kc-ui], .tox-tinymce-aux, .tox-silver-sink'
-              )];
-              ui.forEach(n => {
-                if (n && n.parentNode) document.documentElement.appendChild(n);
-              });
+              document.querySelectorAll(
+                '#kc-toolbar, [data-kc-ui], .tox, .tox-tinymce, ' +
+                '.tox-tinymce-inline, .tox-tinymce-aux, .tox-silver-sink'
+              ).forEach(n => n.remove());
             } catch (_) {}
             // 3. 回應 ack
             port.postMessage({ action: 'prepareForSendAck' });
