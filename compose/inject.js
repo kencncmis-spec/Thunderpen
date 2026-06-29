@@ -355,16 +355,43 @@ await new Promise(r => setTimeout(r, 100));
           if (cell) updatePickerVisual(cell);
         }, true);
 
+        // 取得乾淨的編輯器內容：用 DOM 解析後濾掉所有 UI 殘留節點
+        const cleanContent = () => {
+          const raw = ed.getContent();
+          // 用 DOMParser 解析，移除任何含 UI class / data-kc-ui 標記的節點
+          const doc = new DOMParser().parseFromString(
+            '<div>' + raw + '</div>', 'text/html'
+          );
+          const root = doc.body.firstChild;
+          if (root) {
+            root.querySelectorAll(
+              '#kc-toolbar, [data-kc-ui], ' +
+              '.tox, [class*="tox-"], [class^="tox-"]'
+            ).forEach(n => n.remove());
+            return root.innerHTML;
+          }
+          return raw;
+        };
+
         const sync = debounce(() => {
-          port.postMessage({ action: 'syncContent', html: ed.getContent() });
+          port.postMessage({ action: 'syncContent', html: cleanContent() });
         }, SYNC_DEBOUNCE_MS);
         ed.on('input change keyup paste', sync);
 
         port.onMessage.addListener(msg => {
           if (msg.action === 'requestContent') {
-            port.postMessage({ action: 'content', html: ed.getContent() });
+            port.postMessage({ action: 'content', html: cleanContent() });
           }
         });
+
+        // Save Draft (Ctrl+S) 與失焦時主動 flush，確保 Thunderbird 看到的是乾淨內容
+        const flush = () => {
+          port.postMessage({ action: 'flushContent', html: cleanContent() });
+        };
+        document.addEventListener('keydown', (e) => {
+          if ((e.ctrlKey || e.metaKey) && e.key === 's') flush();
+        }, true);
+        window.addEventListener('blur', flush);
       });
       ed.on('LoadError', err => {
         console.error('[TinyMCE Composer] LoadError:', err);

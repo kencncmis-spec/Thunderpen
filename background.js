@@ -66,6 +66,16 @@ browser.runtime.onConnect.addListener((port) => {
         break;
       }
 
+      // Save Draft 等 Thunderbird 內部路徑可能直接讀 body.innerHTML，
+      // 這時 compose script 主動推送並要求即時 setComposeDetails
+      case 'flushContent': {
+        latestContent.set(tabId, msg.html);
+        try {
+          await messenger.compose.setComposeDetails(tabId, { body: msg.html });
+        } catch (_) {}
+        break;
+      }
+
       // Compose script 回應 requestContent（送出前最後確認）
       case 'content': {
         const resolver = pendingResolvers.get(tabId);
