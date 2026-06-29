@@ -92,40 +92,34 @@ await new Promise(r => setTimeout(r, 100));
     contentEl.innerHTML = '<p><br></p>';
   }
 
-  // toolbar 放在 documentElement（<html> 直接子節點），不放進 body，
-  // 這樣 body.innerHTML 完全不含 toolbar，setComposeDetails / 序列化都不會
-  // 把 toolbar 帶進郵件內容，也不會在被重寫 body 時被刪除。
-  Object.assign(toolbarEl.style, {
-    position: 'fixed', top: '0', left: '0', right: '0',
-    zIndex: '2147483646',
-    flex: '', // 取消 flex 因為已不在 flex parent 下
-  });
-  document.documentElement.appendChild(toolbarEl);
-
+  // toolbar 與 contentEl 都放回 body，用 flex 直欄佈局（這個版面在 Thunderbird
+  // 撰寫視窗中經測試可正常顯示）。body 內含 toolbar 的問題交由 onBeforeSend
+  // 與 prepareForSend 處理：送出前才從 DOM 移除 toolbar，避免被序列化進郵件。
+  document.body.appendChild(toolbarEl);
   document.body.appendChild(contentEl);
 
   Object.assign(document.body.style, {
-    margin: '0', padding: '44px 0 0 0', height: '100%',
-    overflow: 'auto', boxSizing: 'border-box'
+    margin: '0', padding: '0', height: '100%',
+    display: 'flex', flexDirection: 'column',
+    overflow: 'hidden', boxSizing: 'border-box'
   });
-
-  // 動態同步 body padding-top 與 toolbar 實際高度（toolbar wrap 時自動跟上）
-  const syncPad = () => {
-    const h = toolbarEl.getBoundingClientRect().height;
-    if (h > 0) document.body.style.paddingTop = h + 'px';
-  };
-  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(syncPad).observe(toolbarEl);
-  window.addEventListener('resize', syncPad);
+  Object.assign(contentEl.style, {
+    flex: '1 1 auto', minHeight: '0', overflowY: 'auto', padding: '8px 12px'
+  });
 
   // 防止 Thunderbird 把整個 body 設為可編輯時，backspace 連續刪除導致工具列被吃掉
   document.body.contentEditable = 'false';
 
-  // 安全網：toolbar 若不慎被移除就還原到 documentElement
+  // 安全網：toolbar 被移除就還原到 body 首位（但 _kc_sending 期間允許移除）
+  let _kc_sending = false;
   new MutationObserver(() => {
-    if (!document.documentElement.contains(toolbarEl)) {
-      document.documentElement.appendChild(toolbarEl);
+    if (_kc_sending) return;
+    if (!document.body.contains(toolbarEl)) {
+      document.body.insertBefore(toolbarEl, document.body.firstChild);
     }
-  }).observe(document.documentElement, { childList: true });
+  }).observe(document.body, { childList: true });
+  // 暴露給後面 prepareForSend 使用
+  window.__kc_setSending = (v) => { _kc_sending = v; };
 
   // 攔截 Backspace/Delete：當選擇範圍在 contentEl 之外（或剛好在邊界）時阻擋
   document.addEventListener('keydown', (e) => {
@@ -393,6 +387,20 @@ await new Promise(r => setTimeout(r, 100));
         port.onMessage.addListener(msg => {
           if (msg.action === 'requestContent') {
             port.postMessage({ action: 'content', html: cleanContent() });
+          } else if (msg.action === 'prepareForSend') {
+            // 1. 通知 MutationObserver 不要還原 toolbar
+            window.__kc_setSending?.(true);
+            // 2. 把所有 UI 元素移出 body，搬到 documentElement
+            try {
+              const ui = [toolbarEl, ...document.body.querySelectorAll(
+                '[data-kc-ui], .tox-tinymce-aux, .tox-silver-sink'
+              )];
+              ui.forEach(n => {
+                if (n && n.parentNode) document.documentElement.appendChild(n);
+              });
+            } catch (_) {}
+            // 3. 回應 ack
+            port.postMessage({ action: 'prepareForSendAck' });
           }
         });
       });

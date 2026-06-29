@@ -85,6 +85,16 @@ browser.runtime.onConnect.addListener((port) => {
         }
         break;
       }
+
+      // Compose script 回應 prepareForSend 已完成
+      case 'prepareForSendAck': {
+        const ack = pendingAcks.get(tabId);
+        if (ack) {
+          pendingAcks.delete(tabId);
+          ack();
+        }
+        break;
+      }
     }
   });
 });
@@ -94,37 +104,38 @@ browser.runtime.onConnect.addListener((port) => {
 /** tabId -> resolve function，用於等待 compose script 回傳內容 */
 const pendingResolvers = new Map();
 
+/** tabId -> ack resolver */
+const pendingAcks = new Map();
+
 messenger.compose.onBeforeSend.addListener(async (tab) => {
   const port = composePorts.get(tab.id);
   if (!port) return {};
 
   const cached = latestContent.get(tab.id);
 
-  // 1. 通知 compose script 從 DOM 移除 toolbar（避免 Thunderbird 序列化時帶入）
+  // 1. 先要求 compose script 把 toolbar 移出 body，並等待 ack
+  const ackPromise = new Promise((resolve) => {
+    const t = setTimeout(() => { pendingAcks.delete(tab.id); resolve(); }, 1000);
+    pendingAcks.set(tab.id, () => { clearTimeout(t); resolve(); });
+  });
   try { port.postMessage({ action: 'prepareForSend' }); } catch (_) {}
+  await ackPromise;
 
-  // 2. 要求 compose script 回傳乾淨的最新內容
+  // 2. 取得乾淨內容
   const html = await new Promise((resolve) => {
     const timeout = setTimeout(() => {
       pendingResolvers.delete(tab.id);
       resolve(cached ?? '');
     }, 3000);
-
     pendingResolvers.set(tab.id, (content) => {
       clearTimeout(timeout);
       resolve(content);
     });
-
-    try {
-      port.postMessage({ action: 'requestContent' });
-    } catch (_) {
-      clearTimeout(timeout);
-      pendingResolvers.delete(tab.id);
-      resolve(cached ?? '');
-    }
+    try { port.postMessage({ action: 'requestContent' }); }
+    catch (_) { clearTimeout(timeout); pendingResolvers.delete(tab.id); resolve(cached ?? ''); }
   });
 
-  // 3. 明確呼叫 setComposeDetails 寫回（return details 不一定每個版本都吃）
+  // 3. 明確呼叫 setComposeDetails 寫回 body
   try {
     await messenger.compose.setComposeDetails(tab.id, { body: html });
   } catch (e) {
