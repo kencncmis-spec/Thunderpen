@@ -92,28 +92,40 @@ await new Promise(r => setTimeout(r, 100));
     contentEl.innerHTML = '<p><br></p>';
   }
 
-  document.body.appendChild(toolbarEl);
+  // toolbar 放在 documentElement（<html> 直接子節點），不放進 body，
+  // 這樣 body.innerHTML 完全不含 toolbar，setComposeDetails / 序列化都不會
+  // 把 toolbar 帶進郵件內容，也不會在被重寫 body 時被刪除。
+  Object.assign(toolbarEl.style, {
+    position: 'fixed', top: '0', left: '0', right: '0',
+    zIndex: '2147483646',
+    flex: '', // 取消 flex 因為已不在 flex parent 下
+  });
+  document.documentElement.appendChild(toolbarEl);
+
   document.body.appendChild(contentEl);
 
-  // body 用 flex 直欄佈局：toolbar 自然高度於上、contentEl 填滿剩餘空間並滾動
   Object.assign(document.body.style, {
-    margin: '0', padding: '0', height: '100%',
-    display: 'flex', flexDirection: 'column',
-    overflow: 'hidden', boxSizing: 'border-box'
+    margin: '0', padding: '44px 0 0 0', height: '100%',
+    overflow: 'auto', boxSizing: 'border-box'
   });
-  Object.assign(contentEl.style, {
-    flex: '1 1 auto', minHeight: '0', overflowY: 'auto', padding: '8px 12px'
-  });
+
+  // 動態同步 body padding-top 與 toolbar 實際高度（toolbar wrap 時自動跟上）
+  const syncPad = () => {
+    const h = toolbarEl.getBoundingClientRect().height;
+    if (h > 0) document.body.style.paddingTop = h + 'px';
+  };
+  if (typeof ResizeObserver !== 'undefined') new ResizeObserver(syncPad).observe(toolbarEl);
+  window.addEventListener('resize', syncPad);
 
   // 防止 Thunderbird 把整個 body 設為可編輯時，backspace 連續刪除導致工具列被吃掉
   document.body.contentEditable = 'false';
 
-  // 安全網：監視 toolbar 是否被刪除，被刪掉就還原（極端情況下 backspace 仍可能波及）
+  // 安全網：toolbar 若不慎被移除就還原到 documentElement
   new MutationObserver(() => {
-    if (!document.body.contains(toolbarEl)) {
-      document.body.insertBefore(toolbarEl, document.body.firstChild);
+    if (!document.documentElement.contains(toolbarEl)) {
+      document.documentElement.appendChild(toolbarEl);
     }
-  }).observe(document.body, { childList: true });
+  }).observe(document.documentElement, { childList: true });
 
   // 攔截 Backspace/Delete：當選擇範圍在 contentEl 之外（或剛好在邊界）時阻擋
   document.addEventListener('keydown', (e) => {
@@ -381,28 +393,8 @@ await new Promise(r => setTimeout(r, 100));
         port.onMessage.addListener(msg => {
           if (msg.action === 'requestContent') {
             port.postMessage({ action: 'content', html: cleanContent() });
-          } else if (msg.action === 'prepareForSend') {
-            // 送出前把 toolbar 從 body 取出，避免被序列化
-            try {
-              if (toolbarEl.parentNode === document.body) {
-                document.documentElement.appendChild(toolbarEl);
-              }
-              // 另外把所有 tox-* 浮動元素也移除（pop-up、sink）
-              document.body.querySelectorAll(
-                '[data-kc-ui], .tox-tinymce-aux, .tox-silver-sink'
-              ).forEach(n => document.documentElement.appendChild(n));
-            } catch (_) {}
           }
         });
-
-        // Save Draft (Ctrl+S) 與失焦時主動 flush，確保 Thunderbird 看到的是乾淨內容
-        const flush = () => {
-          port.postMessage({ action: 'flushContent', html: cleanContent() });
-        };
-        document.addEventListener('keydown', (e) => {
-          if ((e.ctrlKey || e.metaKey) && e.key === 's') flush();
-        }, true);
-        window.addEventListener('blur', flush);
       });
       ed.on('LoadError', err => {
         console.error('[TinyMCE Composer] LoadError:', err);
